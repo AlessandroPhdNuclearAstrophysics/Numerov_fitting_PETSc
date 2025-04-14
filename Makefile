@@ -6,9 +6,16 @@ TARGET := fit_potential.x
 PETSCDIR := $(HOME)/petsc
 
 OUTPUT_DIR := output
+BIN_DIR := bin
+SRC_DIR := src
 
-all: 
+BUILD_DIRS := $(shell find $(SRC_DIR) -mindepth 1 -maxdepth 2 -type d 2>/dev/null | sed 's/$(SRC_DIR)/build/g')
+
+all: create_folders
 	@$(MAKE) -j -C build all
+
+create_folders: 
+	@mkdir -p $(BUILD_DIRS) $(BIN_DIR) $(OUTPUT_DIR)
 
 config:
 	@echo "Configuring for PETSc..."
