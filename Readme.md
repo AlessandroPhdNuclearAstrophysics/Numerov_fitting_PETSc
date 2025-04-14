@@ -29,6 +29,13 @@ These files are generated during the execution of the program and can be used fo
 
 ## Usage Instructions
 
+### Configure PETSc Path
+Before compiling the project, ensure that the PETSc library path is correctly set. You can configure it using the following command:
+```bash
+make config PETSCPATH=/path/to/petsc
+```
+Replace `/path/to/petsc` with the actual installation path of PETSc on your system.
+
 ### 1. Compile the Project
 To compile the source code, run:
 ```bash
@@ -61,6 +68,13 @@ To remove all `.dat` files from the `output/` directory, use:
 make del_out
 ```
 This command deletes the numerical data files generated during program execution.
+
+### 6. Display Help
+To display a list of available `make` commands and their descriptions, use:
+```bash
+make help
+```
+This will print a summary of all supported commands and their usage.
 
 ## Dependencies
 Ensure the following dependencies are installed on your system:
