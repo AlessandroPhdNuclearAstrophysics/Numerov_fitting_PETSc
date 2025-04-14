@@ -3,11 +3,17 @@
 RM := rm -vf
 MAKE := make
 TARGET := fit_potential.x
+PETSCDIR := $(HOME)/petsc
 
 OUTPUT_DIR := output
 
 all: 
 	@$(MAKE) -j -C build all
+
+config:
+	@echo "Configuring for PETSc..."
+	@echo "Using PETSc directory: $(PETSCDIR), if this is not correct, please set it in the Makefile (for info type 'make help')"
+	sed -i 's|-include .*|-include $(PETSCDIR)/petscdir.mk|' build/Makefile
 
 run: all
 	./bin/$(TARGET) -tao_monitor_short -tao_max_it 10000 -tao_type pounders -tao_gatol 1.e-8
@@ -35,3 +41,14 @@ clean:
 
 del_out:
 	@$(RM) -v output/*.dat
+
+help: 
+	@echo "Makefile for fit_potential"
+	@echo "Usage:"
+	@echo "  make all        - Build the project"
+	@echo "  make config     - Configure the project for PETSc, pass the path to PETSc using \"make config PETSCDIR=/path/to/petsc\""
+	@echo "  make run        - Run the project"
+	@echo "  make compare    - Compare fitted solution to AV18 solution"
+	@echo "  make clean      - Clean the build directory"
+	@echo "  make del_out    - Delete output files"
+	@echo "  make help       - Show this help message"
