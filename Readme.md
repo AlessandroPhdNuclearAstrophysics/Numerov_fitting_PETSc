@@ -4,7 +4,7 @@ The program performs the following tasks:
 
 1. **Quadratic Interpolation**: Computes a quadratic interpolation of the observable $k^3 \cot\delta$ as a function of $ k^2 $ for center-of-mass energies ($ E_{\text{cm}} $) ranging from 0.05 to 1 MeV, using the AV18 potential in the 1P1 channel.
 
-2. **Parameter Fitting**: Fits the depth ($C$) and cutoff ($R_0$) of the EFT-pless potential to match the quadratic interpolation parameters ($a$, $b$, and $c$) derived from the AV18 potential, where $ k^3 \cot \delta = a k^4 + b k^2 + c $.
+2. **Parameter Fitting**: Fits the depth ($C$) and cutoff ($R_0$) of the EFT-pless potential to match the quadratic interpolation parameters ($a$, $b$, and $c$) derived from the AV18 potential, where $k^3 \cot \delta = a k^4 + b k^2 + c$.
 
 3. **Scattering Properties**: Evaluates the scattering volume and the effective range based on the fitted EFT-pless potential.
 
