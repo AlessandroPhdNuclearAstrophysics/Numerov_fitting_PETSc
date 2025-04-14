@@ -1,0 +1,11 @@
+# Ignore all object files
+*.o
+
+# Ignore all output files
+output/
+
+# Ignore all binary files in the bin folder
+bin/*
+
+# Ignore all vscode workspace files
+.vscode/
