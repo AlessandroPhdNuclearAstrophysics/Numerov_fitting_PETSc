@@ -83,7 +83,7 @@ fi
 # Prompt user to install missing packages
 if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
   echo "The following packages are missing: ${missing_packages_list[*]}"
-  read -p "Do you want to install them? (y/n): " response
+  read -p "Do you want to install all of them? (y/n): " response
   if [[ "$response" == "y" || "$response" == "Y" ]]; then
     for package in "${missing_packages_list[@]}"; do
       case "$OSTYPE" in
@@ -98,6 +98,28 @@ if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
           exit 1
           ;;
       esac
+    done
+  else
+    echo "You can choose specific packages to install."
+    echo "Available packages: ${missing_packages_list[*]}"
+    read -p "Enter the names of the packages you want to install (space-separated): " selected_packages
+    for package in $selected_packages; do
+      if [[ " ${missing_packages_list[*]} " == *" $package "* ]]; then
+        case "$OSTYPE" in
+          linux*)
+            sudo apt-get install -y "$package"
+            ;;
+          darwin*)
+            brew install "$package"
+            ;;
+          *)
+            echo "Unsupported OS: $OSTYPE"
+            exit 1
+            ;;
+        esac
+      else
+        echo "Package $package is not in the missing packages list."
+      fi
     done
   fi
 fi
