@@ -18,6 +18,12 @@ jobs:
           brew install petsc
           echo "PETSc installed"
 
+      - name: Test print_os
+        run: |
+          echo "Running print_os"
+          make print_os
+          echo "print_os completed"
+
       - name: Test Makefile
         run: |
           make config
