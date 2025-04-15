@@ -47,6 +47,11 @@ jobs:
           make all check
           echo "PETSc installed"
 
+      - name: Check directory PETSc
+        run: |
+          tree -d $HOME/petsc
+          exit -1
+
       - name: Test print_os
         run: |
           echo "Running print_os"
