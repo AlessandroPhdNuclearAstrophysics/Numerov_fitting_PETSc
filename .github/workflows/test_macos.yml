@@ -12,8 +12,13 @@ jobs:
 
       - name: Set up GSL, lapack and blas
         run: |
-          brew install gsl openblas lapack
+          brew install gsl openblas lapack gfortran
           echo "GSL, lapack and blas installed"
+
+      - name: Verify Fortran Compiler
+        run: |
+          which gfortran
+          gfortran --version
 
       - name: Set up PETSc
         run: |
