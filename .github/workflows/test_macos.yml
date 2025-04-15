@@ -12,7 +12,7 @@ jobs:
 
       - name: Set up GSL, lapack and blas
         run: |
-          brew install gsl openblas lapack gfortran
+          brew install gsl openblas lapack
           echo "GSL, lapack and blas installed"
 
       - name: Set up PETSc
@@ -25,7 +25,7 @@ jobs:
           echo "Current PATH: $PATH"
           git clone -b release https://gitlab.com/petsc/petsc.git petsc
           cd petsc
-          ./configure --download-mpich --download-fblaslapack --download-make --with-fc=1
+          ./configure --download-mpich --download-fblaslapack --download-make --with-fc=gfortran
           make all check
           echo "PETSc installed"
 
