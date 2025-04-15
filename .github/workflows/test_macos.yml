@@ -1,0 +1,25 @@
+name: Test Makefile on macOS
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up PETSc
+        run: |
+          brew install petsc
+          echo "PETSc installed"
+
+      - name: Test Makefile
+        run: |
+          make config
+          make all
+          make run
