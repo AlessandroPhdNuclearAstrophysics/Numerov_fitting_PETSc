@@ -15,8 +15,13 @@ jobs:
 
       - name: Set up PETSc
         run: |
-          apt-get install petsc
-          echo "PETSc installed"
+          cd $HOME
+          echo "Setting up PETSc"
+          git clone -b release https://gitlab.com/petsc/petsc.git petsc
+          git pull
+          cd petsc
+          ./configure --download-mpich --download-fblaslapack
+          make all check
 
       - name: Test print_os
         run: |
