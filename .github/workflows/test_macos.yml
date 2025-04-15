@@ -49,8 +49,7 @@ jobs:
 
       - name: Check directory PETSc
         run: |
-          tree -d $HOME/petsc
-          exit -1
+          find $HOME/petsc -type d
 
       - name: Test print_os
         run: |
