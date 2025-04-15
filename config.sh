@@ -32,6 +32,9 @@ add_missing_package() {
 
 # Check for make
 add_missing_package "make" "make"
+if [[ "$OSTYPE" == "linux-gnu"* && ! dpkg -l | grep -q "make" ]]; then
+  missing_packages+=("make")
+fi
 
 # Check for gfortran
 add_missing_package "gfortran" "gfortran"
