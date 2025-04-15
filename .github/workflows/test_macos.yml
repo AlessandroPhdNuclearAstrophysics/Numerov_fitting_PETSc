@@ -10,35 +10,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up GSL, lapack and blas
+      - name: Install GSL, lapack, blas, and gfortran
         run: |
           brew install gsl openblas lapack gfortran
-          echo "GSL, lapack and blas installed"
-          
-      - name: Ensure gfortran is linked
+          brew link gcc
+          echo "GSL, lapack, blas, and gfortran installed"
+
+      - name: Ensure gfortran is in PATH
         run: |
-          echo "Checking gfortran installation"
+          echo "Adding gfortran to PATH"
+          export PATH="/usr/local/bin:$PATH"
           which gfortran || echo "gfortran not found in PATH"
-          if ! which gfortran; then
-            echo "Linking gfortran manually"
-            ln -s /usr/local/bin/gfortran-$(gcc --version | head -n 1 | awk '{print $3}') /usr/local/bin/gfortran || true
-          fi
           gfortran --version
-          
+
       - name: Verify Fortran Compiler
         run: |
+          echo "Verifying Fortran compiler"
           which gfortran
           gfortran --version
 
+      - name: Debug Homebrew Installation
+        run: |
+          echo "Listing Homebrew-installed files"
+          ls -la /usr/local/bin
+          ls -la /usr/local/Cellar/gcc
 
       - name: Set up PETSc
         run: |
           cd $HOME
           echo "Setting up PETSc"
-          echo "Current directory: $(pwd)"
-          echo "Current user: $(whoami)"
-          echo "Current date: $(date)"
-          echo "Current PATH: $PATH"
           git clone -b release https://gitlab.com/petsc/petsc.git petsc
           cd petsc
           ./configure --download-mpich --download-fblaslapack --download-make --with-fc=gfortran
