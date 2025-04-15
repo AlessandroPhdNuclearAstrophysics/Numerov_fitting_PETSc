@@ -10,6 +10,7 @@ GRACE_FLAG=32        # 100000
 
 # Variable to store missing packages as a binary value
 missing_packages_binary=0
+missing_packages_list=()
 
 # Function to check if a package is installed
 check_package() {
@@ -34,6 +35,7 @@ check_package() {
 add_missing_package_flag() {
   if ! command -v "$1" &> /dev/null && ! check_package "$2"; then
     missing_packages_binary=$((missing_packages_binary | $3))
+    missing_packages_list+=("$2")
   fi
 }
 
@@ -54,6 +56,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   if ! brew list lapack &> /dev/null; then
     missing_packages_binary=$((missing_packages_binary | $LAPACK_FLAG))
+    missing_packages_list+=("lapack")
   fi
 fi
 
@@ -63,6 +66,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   if ! brew list openblas &> /dev/null; then
     missing_packages_binary=$((missing_packages_binary | $BLAS_FLAG))
+    missing_packages_list+=("openblas")
   fi
 fi
 
@@ -72,6 +76,29 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   if ! brew list grace &> /dev/null; then
     missing_packages_binary=$((missing_packages_binary | $GRACE_FLAG))
+    missing_packages_list+=("grace")
+  fi
+fi
+
+# Prompt user to install missing packages
+if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
+  echo "The following packages are missing: ${missing_packages_list[*]}"
+  read -p "Do you want to install them? (y/n): " response
+  if [[ "$response" == "y" || "$response" == "Y" ]]; then
+    for package in "${missing_packages_list[@]}"; do
+      case "$OSTYPE" in
+        linux*)
+          sudo apt-get install -y "$package"
+          ;;
+        darwin*)
+          brew install "$package"
+          ;;
+        *)
+          echo "Unsupported OS: $OSTYPE"
+          exit 1
+          ;;
+      esac
+    done
   fi
 fi
 
