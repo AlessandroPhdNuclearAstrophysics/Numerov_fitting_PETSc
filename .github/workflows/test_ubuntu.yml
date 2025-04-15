@@ -17,8 +17,12 @@ jobs:
         run: |
           cd $HOME
           echo "Setting up PETSc"
-          sudo apt-get update
-          sudo apt-get install git
+          echo "Current directory: $(pwd)"
+          echo "Current user: $(whoami)"
+          echo "Current date: $(date)"
+          echo "Current environment variables:"
+          env
+          echo "Current PATH: $PATH"
           git clone -b release https://gitlab.com/petsc/petsc.git petsc
           git pull
           cd petsc
