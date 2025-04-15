@@ -139,7 +139,6 @@ fi
 
 
 # Return the binary flag for missing packages
-missing_packages_binary=0
 for package in "${missing_packages_list[@]}"; do
   case "$package" in
     "make")
