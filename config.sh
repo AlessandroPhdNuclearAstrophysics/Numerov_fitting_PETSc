@@ -21,9 +21,6 @@ check_package() {
     darwin*)
       brew list "$1" &> /dev/null
       ;;
-    msys*|cygwin*|win32*)
-      dpkg -l | grep -q "$1"
-      ;;
     *)
       echo "Unsupported OS: $OSTYPE"
       exit 1
@@ -33,51 +30,52 @@ check_package() {
 
 # Function to add missing package flag
 add_missing_package_flag() {
-  if ! command -v "$1" &> /dev/null && ! check_package "$2"; then
-    missing_packages_binary=$((missing_packages_binary | $3))
-    missing_packages_list+=("$2")
+  local command_name="$1"
+  local package_name="$2"
+  local flag="$3"
+
+  if ! command -v "$command_name" &> /dev/null && ! check_package "$package_name"; then
+    missing_packages_binary=$((missing_packages_binary | flag))
+    missing_packages_list+=("$package_name")
   fi
 }
 
-# Check for make
-add_missing_package_flag "make" "make" $MAKE_FLAG
+# Function to install a package
+install_package() {
+  local package="$1"
+  local flag="$2"
 
-# Check for gfortran
+  case "$OSTYPE" in
+    linux*)
+      if sudo apt-get install -y "$package"; then
+        missing_packages_binary=$((missing_packages_binary & ~flag))
+      fi
+      ;;
+    darwin*)
+      if brew install "$package"; then
+        missing_packages_binary=$((missing_packages_binary & ~flag))
+      fi
+      ;;
+    *)
+      echo "Unsupported OS: $OSTYPE"
+      exit 1
+      ;;
+  esac
+}
+
+# Check for required packages
+add_missing_package_flag "make" "make" $MAKE_FLAG
 add_missing_package_flag "gfortran" "gfortran" $GFORTRAN_FLAG
 
-# Check for build-essential (Linux only)
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   add_missing_package_flag "" "build-essential" $BUILD_ESSENTIAL_FLAG
-fi
-
-# Check for lapack
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   add_missing_package_flag "" "liblapack-dev" $LAPACK_FLAG
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-  if ! brew list lapack &> /dev/null; then
-    missing_packages_binary=$((missing_packages_binary | $LAPACK_FLAG))
-    missing_packages_list+=("lapack")
-  fi
-fi
-
-# Check for blas
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   add_missing_package_flag "" "blas" $BLAS_FLAG
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-  if ! brew list openblas &> /dev/null; then
-    missing_packages_binary=$((missing_packages_binary | $BLAS_FLAG))
-    missing_packages_list+=("openblas")
-  fi
-fi
-
-# Check for xmgrace
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   add_missing_package_flag "" "grace" $GRACE_FLAG
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-  if ! brew list grace &> /dev/null; then
-    missing_packages_binary=$((missing_packages_binary | $GRACE_FLAG))
-    missing_packages_list+=("grace")
-  fi
+  add_missing_package_flag "" "lapack" $LAPACK_FLAG
+  add_missing_package_flag "" "openblas" $BLAS_FLAG
+  add_missing_package_flag "" "grace" $GRACE_FLAG
 fi
 
 echo "Missing packages binary: $missing_packages_binary"
@@ -86,104 +84,52 @@ echo "Missing packages binary: $missing_packages_binary"
 if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
   echo "The following packages are missing: ${missing_packages_list[*]}"
   read -p "Do you want to install all of them? (y/n): " response
-  if [[ "$response" == "y" || "$response" == "Y" ]]; then
+  if [[ "$response" =~ ^[yY]$ ]]; then
     for package in "${missing_packages_list[@]}"; do
-      case "$OSTYPE" in
-        linux*)
-          sudo apt-get install -y "$package"
-          ;;
-        darwin*)
-          brew install "$package"
-          ;;
-        *)
-          echo "Unsupported OS: $OSTYPE"
-          exit 1
-          ;;
+      case "$package" in
+        "make") install_package "make" $MAKE_FLAG ;;
+        "gfortran") install_package "gfortran" $GFORTRAN_FLAG ;;
+        "build-essential") install_package "build-essential" $BUILD_ESSENTIAL_FLAG ;;
+        "liblapack-dev") install_package "liblapack-dev" $LAPACK_FLAG ;;
+        "blas") install_package "blas" $BLAS_FLAG ;;
+        "grace") install_package "grace" $GRACE_FLAG ;;
+        "lapack") install_package "lapack" $LAPACK_FLAG ;;
+        "openblas") install_package "openblas" $BLAS_FLAG ;;
       esac
     done
   else
     echo "You can choose specific packages to install."
-    echo "Available packages: ${missing_packages_list[*]}"
-    echo "Please select the packages you want to install by typing their numbers (space-separated):"
     for i in "${!missing_packages_list[@]}"; do
-      echo "$(( i + 1 ))) ${missing_packages_list[i]}"
+      echo "$((i + 1))) ${missing_packages_list[i]}"
     done
     read -p "Enter the numbers of the packages you want to install (space-separated): " selected_numbers
-    selected_packages=()
     for number in $selected_numbers; do
       if [[ $number -ge 1 && $number -le ${#missing_packages_list[@]} ]]; then
-      selected_packages+=("${missing_packages_list[$(( number - 1 ))]}")
-      else
-      echo "Invalid selection: $number"
-      fi
-    done
-    for package in "${selected_packages[@]}"; do
-      if [[ " ${missing_packages_list[*]} " == *" $package "* ]]; then
-        case "$OSTYPE" in
-            linux*)
-            if sudo apt-get install -y "$package"; then
-              case "$package" in
-              "make")
-                missing_packages_binary=$((missing_packages_binary & ~$MAKE_FLAG))
-                ;;
-              "gfortran")
-                missing_packages_binary=$((missing_packages_binary & ~$GFORTRAN_FLAG))
-                ;;
-              "build-essential")
-                missing_packages_binary=$((missing_packages_binary & ~$BUILD_ESSENTIAL_FLAG))
-                ;;
-              "liblapack-dev")
-                missing_packages_binary=$((missing_packages_binary & ~$LAPACK_FLAG))
-                ;;
-              "blas")
-                missing_packages_binary=$((missing_packages_binary & ~$BLAS_FLAG))
-                ;;
-              "grace")
-                missing_packages_binary=$((missing_packages_binary & ~$GRACE_FLAG))
-                ;;
-              esac
-            fi
-            ;;
-            darwin*)
-            if brew install "$package"; then
-              case "$package" in
-              "make")
-                missing_packages_binary=$((missing_packages_binary & ~$MAKE_FLAG))
-                ;;
-              "gfortran")
-                missing_packages_binary=$((missing_packages_binary & ~$GFORTRAN_FLAG))
-                ;;
-              "lapack")
-                missing_packages_binary=$((missing_packages_binary & ~$LAPACK_FLAG))
-                ;;
-              "openblas")
-                missing_packages_binary=$((missing_packages_binary & ~$BLAS_FLAG))
-                ;;
-              "grace")
-                missing_packages_binary=$((missing_packages_binary & ~$GRACE_FLAG))
-                ;;
-              esac
-            fi
-            ;;
-            *)
-            echo "Unsupported OS: $OSTYPE"
-            exit 1
-            ;;
+        package="${missing_packages_list[$((number - 1))]}"
+        case "$package" in
+          "make") install_package "make" $MAKE_FLAG ;;
+          "gfortran") install_package "gfortran" $GFORTRAN_FLAG ;;
+          "build-essential") install_package "build-essential" $BUILD_ESSENTIAL_FLAG ;;
+          "liblapack-dev") install_package "liblapack-dev" $LAPACK_FLAG ;;
+          "blas") install_package "blas" $BLAS_FLAG ;;
+          "grace") install_package "grace" $GRACE_FLAG ;;
+          "lapack") install_package "lapack" $LAPACK_FLAG ;;
+          "openblas") install_package "openblas" $BLAS_FLAG ;;
         esac
       else
-        echo "Package $package is not in the missing packages list."
+        echo "Invalid selection: $number"
       fi
     done
   fi
 fi
 
-
 echo "Missing packages binary after installation: $missing_packages_binary"
-echo
-# Check if all required packages are installed
+
+# Final check
 if [[ $missing_packages_binary -eq 0 ]]; then
   echo "All required packages are installed."
 else
   echo "Some required packages are still missing."
 fi
+
 exit $missing_packages_binary
