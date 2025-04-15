@@ -115,7 +115,7 @@ if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
       echo "Invalid selection: $number"
       fi
     done
-    for package in $selected_packages; do
+    for package in "${selected_packages[@]}"; do
       if [[ " ${missing_packages_list[*]} " == *" $package "* ]]; then
         case "$OSTYPE" in
           linux*)
@@ -136,5 +136,30 @@ if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
   fi
 fi
 
+
+
 # Return the binary flag for missing packages
+missing_packages_binary=0
+for package in "${missing_packages_list[@]}"; do
+  case "$package" in
+    "make")
+      missing_packages_binary=$((missing_packages_binary | $MAKE_FLAG))
+      ;;
+    "gfortran")
+      missing_packages_binary=$((missing_packages_binary | $GFORTRAN_FLAG))
+      ;;
+    "build-essential")
+      missing_packages_binary=$((missing_packages_binary | $BUILD_ESSENTIAL_FLAG))
+      ;;
+    "liblapack-dev"|"lapack")
+      missing_packages_binary=$((missing_packages_binary | $LAPACK_FLAG))
+      ;;
+    "blas"|"openblas")
+      missing_packages_binary=$((missing_packages_binary | $BLAS_FLAG))
+      ;;
+    "grace")
+      missing_packages_binary=$((missing_packages_binary | $GRACE_FLAG))
+      ;;
+  esac
+done
 exit $missing_packages_binary
