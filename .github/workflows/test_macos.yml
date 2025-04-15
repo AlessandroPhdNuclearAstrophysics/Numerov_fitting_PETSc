@@ -20,6 +20,16 @@ jobs:
           which gfortran
           gfortran --version
 
+      - name: Ensure gfortran is linked
+        run: |
+          echo "Checking gfortran installation"
+          which gfortran || echo "gfortran not found in PATH"
+          if ! which gfortran; then
+            echo "Linking gfortran manually"
+            ln -s /usr/local/bin/gfortran-$(gcc --version | head -n 1 | awk '{print $3}') /usr/local/bin/gfortran || true
+          fi
+          gfortran --version
+
       - name: Set up PETSc
         run: |
           cd $HOME
