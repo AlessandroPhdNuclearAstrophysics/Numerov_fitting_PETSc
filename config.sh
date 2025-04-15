@@ -102,7 +102,19 @@ if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
   else
     echo "You can choose specific packages to install."
     echo "Available packages: ${missing_packages_list[*]}"
-    read -p "Enter the names of the packages you want to install (space-separated): " selected_packages
+    echo "Please select the packages you want to install by typing their numbers (space-separated):"
+    for i in "${!missing_packages_list[@]}"; do
+      echo "$((i + 1))) ${missing_packages_list[i]}"
+    done
+    read -p "Enter the numbers of the packages you want to install (space-separated): " selected_numbers
+    selected_packages=()
+    for number in $selected_numbers; do
+      if [[ $number -ge 1 && $number -le ${#missing_packages_list[@]} ]]; then
+      selected_packages+=("${missing_packages_list[$((number - 1))]}")
+      else
+      echo "Invalid selection: $number"
+      fi
+    done
     for package in $selected_packages; do
       if [[ " ${missing_packages_list[*]} " == *" $package "* ]]; then
         case "$OSTYPE" in
