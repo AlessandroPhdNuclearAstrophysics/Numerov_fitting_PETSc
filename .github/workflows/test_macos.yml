@@ -20,30 +20,19 @@ jobs:
         run: |
           echo "Adding gfortran to PATH"
           export PATH="/opt/homebrew/bin:/opt/homebrew/Cellar/gcc/14.2.0_1/bin:$PATH"
+          echo "PATH is now: $PATH"
           which gfortran || echo "gfortran not found in PATH"
           gfortran --version
-
-      - name: Verify Fortran Compiler
-        run: |
-          echo "Verifying Fortran compiler"
-          export PATH="/opt/homebrew/bin:/opt/homebrew/Cellar/gcc/14.2.0_1/bin:$PATH"
-          which gfortran
-          gfortran --version
-
-      - name: Debug Homebrew Installation
-        run: |
-          echo "Listing Homebrew-installed files"
-          ls -la /opt/homebrew/bin
-          ls -la /opt/homebrew/Cellar/gcc/14.2.0_1/bin
 
       - name: Set up PETSc
         run: |
           cd $HOME
           echo "Setting up PETSc"
           export PATH="/opt/homebrew/bin:/opt/homebrew/Cellar/gcc/14.2.0_1/bin:$PATH"
+          echo "PATH is now: $PATH"
           git clone -b release https://gitlab.com/petsc/petsc.git petsc
           cd petsc
-          ./configure --download-mpich --download-fblaslapack --download-make
+          ./configure --download-mpich --download-fblaslapack --download-make --with-fc=gfortran
           make all check
           echo "PETSc installed"
 
