@@ -80,6 +80,8 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
   fi
 fi
 
+echo "Missing packages binary: $missing_packages_binary"
+
 # Prompt user to install missing packages
 if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
   echo "The following packages are missing: ${missing_packages_list[*]}"
@@ -176,6 +178,8 @@ if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
 fi
 
 
+echo "Missing packages binary after installation: $missing_packages_binary"
+echo
 # Check if all required packages are installed
 if [[ $missing_packages_binary -eq 0 ]]; then
   echo "All required packages are installed."
