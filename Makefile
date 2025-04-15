@@ -11,6 +11,8 @@ SRC_DIR := src
 
 BUILD_DIRS := $(shell find $(SRC_DIR) -mindepth 1 -maxdepth 2 -type d 2>/dev/null | sed 's/$(SRC_DIR)/build/g')
 
+PACKAGES_MISSING_FLAG := $(shell ./config.sh -q; echo $$?)
+
 # Detect OS
 UNAME := $(shell uname)
 SEDI := sed -i # Default to GNU sed
@@ -29,10 +31,19 @@ print_os:
 create_folders: 
 	@mkdir -p $(BUILD_DIRS) $(BIN_DIR) $(OUTPUT_DIR)
 
-config:
+config_PETSC:
 	@echo "Configuring for PETSc..."
 	@echo "Using PETSc directory: $(PETSCDIR), if this is not correct, please set it in the Makefile (for info type 'make help')"
 	$(SEDI) 's|-include .*|-include $(PETSCDIR)/petscdir.mk|' build/Makefile
+
+config:
+	@echo "Checking for missing packages..."
+ifeq ($(PACKAGES_MISSING_FLAG), 0)
+	@echo "All required packages are installed."
+else
+	@config.sh
+PACKAGES_MISSING_FLAG := $(shell ./config.sh -q; echo $$?)
+endif
 
 run: all
 	./bin/$(TARGET) -tao_monitor_short -tao_max_it 10000 -tao_type pounders -tao_gatol 1.e-8
