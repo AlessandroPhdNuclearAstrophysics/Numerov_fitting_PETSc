@@ -12,7 +12,7 @@ jobs:
 
       - name: Set up GSL, lapack and blas
         run: |
-          brew install gsl lapack blas
+          brew install gsl openblas lapack
           echo "GSL, lapack and blas installed"
 
       - name: Set up PETSc
