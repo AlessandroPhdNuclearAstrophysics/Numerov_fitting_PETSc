@@ -11,14 +11,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up GSL
+      - name: Set up GSL, lapack and blas
         run: |
-          brew install gsl
-          echo "GSL installed"
+          brew install gsl lapack blas
+          echo "GSL, lapack and blas installed"
 
       - name: Set up PETSc
         run: |
-          brew install petsc
+          cd $HOME
+          echo "Setting up PETSc"
+          echo "Current directory: $(pwd)"
+          echo "Current user: $(whoami)"
+          echo "Current date: $(date)"
+          echo "Current PATH: $PATH"
+          git clone -b release https://gitlab.com/petsc/petsc.git petsc
+          cd petsc
+          ./configure --download-mpich --download-fblaslapack
+          make all check
           echo "PETSc installed"
 
       - name: Test print_os
@@ -26,6 +35,11 @@ jobs:
           echo "Running print_os"
           make print_os
           echo "print_os completed"
+
+      - name: Debug Directory
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -la
 
       - name: Test Makefile
         run: |
