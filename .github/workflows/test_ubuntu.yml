@@ -13,10 +13,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up GSL
+      - name: Set up GSL, lapack and blas
         run: |
-          sudo apt-get install -y libgsl-dev
-          echo "GSL installed"
+          sudo apt-get install -y libgsl-dev liblapack-dev libblas-dev
+          echo "GSL installed" 
 
       - name: Set up PETSc
         run: |
