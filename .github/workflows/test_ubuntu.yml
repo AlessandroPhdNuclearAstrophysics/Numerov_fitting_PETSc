@@ -1,0 +1,32 @@
+name: Test Makefile on Ubuntu
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test-macos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up PETSc
+        run: |
+          apt-get install petsc
+          echo "PETSc installed"
+
+      - name: Test print_os
+        run: |
+          echo "Running print_os"
+          make print_os
+          echo "print_os completed"
+
+      - name: Test Makefile
+        run: |
+          apt-get update
+          make config
+          make all
+          make run
