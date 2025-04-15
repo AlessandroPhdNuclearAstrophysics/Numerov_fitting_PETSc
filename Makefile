@@ -13,14 +13,9 @@ BUILD_DIRS := $(shell find $(SRC_DIR) -mindepth 1 -maxdepth 2 -type d 2>/dev/nul
 
 # Detect OS
 UNAME := $(shell uname)
-SED := sed
-
-ifeq ($(UNAME), Darwin)
-    SED := gsed  # Use GNU sed on macOS if installed via Homebrew
-endif
 
 print_os:
-	@echo "Operating System: $(UNAME). Using $(SED) for sed commands."
+	@echo "Operating System: $(UNAME)"
 
 all: create_folders
 	@$(MAKE) -j -C build all
@@ -29,9 +24,13 @@ create_folders:
 	@mkdir -p $(BUILD_DIRS) $(BIN_DIR) $(OUTPUT_DIR)
 
 config:
-	@echo "Configuring for PETSc..."
-	@echo "Using PETSc directory: $(PETSCDIR), if this is not correct, please set it in the Makefile (for info type 'make help')"
-	$(SED) -i 's|-include .*|-include $(PETSCDIR)/petscdir.mk|' build/Makefile
+    @echo "Configuring for PETSc..."
+    @echo "Using PETSc directory: $(PETSCDIR), if this is not correct, please set it in the Makefile (for info type 'make help')"
+ifeq ($(UNAME), Darwin)
+    sed -i '' 's|-include .*|-include $(PETSCDIR)/petscdir.mk|' build/Makefile
+else
+    sed -i 's|-include .*|-include $(PETSCDIR)/petscdir.mk|' build/Makefile
+endif
 
 run: all
 	./bin/$(TARGET) -tao_monitor_short -tao_max_it 10000 -tao_type pounders -tao_gatol 1.e-8
