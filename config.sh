@@ -118,13 +118,52 @@ if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
     for package in "${selected_packages[@]}"; do
       if [[ " ${missing_packages_list[*]} " == *" $package "* ]]; then
         case "$OSTYPE" in
-          linux*)
-            sudo apt-get install -y "$package"
+            linux*)
+            if sudo apt-get install -y "$package"; then
+              case "$package" in
+              "make")
+                missing_packages_binary=$((missing_packages_binary & ~$MAKE_FLAG))
+                ;;
+              "gfortran")
+                missing_packages_binary=$((missing_packages_binary & ~$GFORTRAN_FLAG))
+                ;;
+              "build-essential")
+                missing_packages_binary=$((missing_packages_binary & ~$BUILD_ESSENTIAL_FLAG))
+                ;;
+              "liblapack-dev")
+                missing_packages_binary=$((missing_packages_binary & ~$LAPACK_FLAG))
+                ;;
+              "blas")
+                missing_packages_binary=$((missing_packages_binary & ~$BLAS_FLAG))
+                ;;
+              "grace")
+                missing_packages_binary=$((missing_packages_binary & ~$GRACE_FLAG))
+                ;;
+              esac
+            fi
             ;;
-          darwin*)
-            brew install "$package"
+            darwin*)
+            if brew install "$package"; then
+              case "$package" in
+              "make")
+                missing_packages_binary=$((missing_packages_binary & ~$MAKE_FLAG))
+                ;;
+              "gfortran")
+                missing_packages_binary=$((missing_packages_binary & ~$GFORTRAN_FLAG))
+                ;;
+              "lapack")
+                missing_packages_binary=$((missing_packages_binary & ~$LAPACK_FLAG))
+                ;;
+              "openblas")
+                missing_packages_binary=$((missing_packages_binary & ~$BLAS_FLAG))
+                ;;
+              "grace")
+                missing_packages_binary=$((missing_packages_binary & ~$GRACE_FLAG))
+                ;;
+              esac
+            fi
             ;;
-          *)
+            *)
             echo "Unsupported OS: $OSTYPE"
             exit 1
             ;;
@@ -137,28 +176,10 @@ if [[ ${#missing_packages_list[@]} -gt 0 ]]; then
 fi
 
 
-
-# Return the binary flag for missing packages
-for package in "${missing_packages_list[@]}"; do
-  case "$package" in
-    "make")
-      missing_packages_binary=$((missing_packages_binary | $MAKE_FLAG))
-      ;;
-    "gfortran")
-      missing_packages_binary=$((missing_packages_binary | $GFORTRAN_FLAG))
-      ;;
-    "build-essential")
-      missing_packages_binary=$((missing_packages_binary | $BUILD_ESSENTIAL_FLAG))
-      ;;
-    "liblapack-dev"|"lapack")
-      missing_packages_binary=$((missing_packages_binary | $LAPACK_FLAG))
-      ;;
-    "blas"|"openblas")
-      missing_packages_binary=$((missing_packages_binary | $BLAS_FLAG))
-      ;;
-    "grace")
-      missing_packages_binary=$((missing_packages_binary | $GRACE_FLAG))
-      ;;
-  esac
-done
+# Check if all required packages are installed
+if [[ $missing_packages_binary -eq 0 ]]; then
+  echo "All required packages are installed."
+else
+  echo "Some required packages are still missing."
+fi
 exit $missing_packages_binary
