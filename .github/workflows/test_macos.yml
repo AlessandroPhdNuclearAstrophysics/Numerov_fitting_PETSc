@@ -14,12 +14,7 @@ jobs:
         run: |
           brew install gsl openblas lapack gfortran
           echo "GSL, lapack and blas installed"
-
-      - name: Verify Fortran Compiler
-        run: |
-          which gfortran
-          gfortran --version
-
+          
       - name: Ensure gfortran is linked
         run: |
           echo "Checking gfortran installation"
@@ -29,6 +24,12 @@ jobs:
             ln -s /usr/local/bin/gfortran-$(gcc --version | head -n 1 | awk '{print $3}') /usr/local/bin/gfortran || true
           fi
           gfortran --version
+          
+      - name: Verify Fortran Compiler
+        run: |
+          which gfortran
+          gfortran --version
+
 
       - name: Set up PETSc
         run: |
