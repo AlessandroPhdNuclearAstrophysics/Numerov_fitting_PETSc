@@ -17,6 +17,8 @@ jobs:
         run: |
           cd $HOME
           echo "Setting up PETSc"
+          sudo apt-get update
+          sudo apt-get install git
           git clone -b release https://gitlab.com/petsc/petsc.git petsc
           git pull
           cd petsc
