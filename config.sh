@@ -32,7 +32,7 @@ add_missing_package() {
 
 # Check for make
 add_missing_package "make" "make"
-if [[ "$OSTYPE" == "linux-gnu"* && ! dpkg -l | grep -q "make" ]]; then
+if [[ "$OSTYPE" == "linux-gnu"* && ! $(dpkg -l | grep "ii  make") ]]; then
   missing_packages+=("make")
 fi
 
