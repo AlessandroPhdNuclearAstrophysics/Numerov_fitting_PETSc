@@ -41,7 +41,7 @@ config:
 ifeq ($(PACKAGES_MISSING_FLAG), 0)
 	@echo "All required packages are installed."
 else
-	@config.sh
+	@./config.sh
 PACKAGES_MISSING_FLAG := $(shell ./config.sh -q; echo $$?)
 endif
 
