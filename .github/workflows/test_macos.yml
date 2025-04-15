@@ -43,7 +43,7 @@ jobs:
           export PATH="/opt/homebrew/bin:/opt/homebrew/Cellar/gcc/14.2.0_1/bin:$PATH"
           git clone -b release https://gitlab.com/petsc/petsc.git petsc
           cd petsc
-          ./configure --download-mpich --download-fblaslapack --download-make --with-fc=gfortran
+          ./configure --download-mpich --download-fblaslapack --download-make
           make all check
           echo "PETSc installed"
 
