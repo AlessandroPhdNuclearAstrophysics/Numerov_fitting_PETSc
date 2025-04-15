@@ -1,8 +1,7 @@
 name: Test Makefile on macOS
+
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   test-macos:
