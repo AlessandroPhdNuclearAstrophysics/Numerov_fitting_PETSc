@@ -11,6 +11,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up GSL
+        run: |
+          brew install gsl
+          echo "GSL installed"
+
       - name: Set up PETSc
         run: |
           brew install petsc

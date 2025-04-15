@@ -13,6 +13,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up GSL
+        run: |
+          sudo apt-get install -y libgsl-dev
+          echo "GSL installed"
+
       - name: Set up PETSc
         run: |
           cd $HOME
