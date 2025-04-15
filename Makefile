@@ -20,7 +20,7 @@ ifeq ($(UNAME), Darwin)
 endif
 
 print_os:
-	@echo "Operating System: $(UNAME)"
+	@echo "Operating System: $(UNAME). Using $(SED) for sed commands."
 
 all: create_folders
 	@$(MAKE) -j -C build all
