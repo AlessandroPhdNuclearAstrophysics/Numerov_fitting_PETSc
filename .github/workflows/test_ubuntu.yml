@@ -39,7 +39,6 @@ jobs:
 
       - name: Test Makefile
         run: |
-          apt-get update
           make config
           make all
           make run
