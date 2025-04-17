@@ -46,7 +46,7 @@ PACKAGES_MISSING_FLAG := $(shell ./config.sh -q; echo $$?)
 endif
 
 run: all
-	./bin/$(TARGET) -tao_monitor_short -tao_max_it 10000 -tao_type pounders -tao_gatol 1.e-8
+	./bin/$(TARGET) -tao_monitor_short -tao_max_it 1000 -tao_type pounders -tao_gatol 1.e-8
 
 compare:
 	@echo  "@with g0 \n\
