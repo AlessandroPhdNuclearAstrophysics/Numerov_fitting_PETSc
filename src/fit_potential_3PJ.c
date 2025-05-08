@@ -15,8 +15,8 @@ static char help[] = "Find the constants to fit the 1P1 channel evaluated \n\
             with AV18, but using the EFT-pless model \n";
 
 #define NOBSERVATIONS 3
-#define NPARAMETERS   2
-#define NCHANNELS NOBSERVATIONS/3
+#define NPARAMETERS   3
+#define NCHANNELS NOBSERVATIONS
 
 
 const int ipot_ref = 18;
@@ -31,11 +31,11 @@ double *energies;
 double *k2;
 double *kcotd[NCHANNELS];
 
-PetscInt J_ref[] = {1};
-PetscInt J_fit[] = {1};
+PetscInt J_ref[] = {0, 1};
+PetscInt J_fit[] = {0, 1};
 
-QuantumNumbers qn_ref = {18,  1, 1, 0, J_ref, 1};
-QuantumNumbers qn_fit = {-1, -1, 1, 0, J_fit, 1};
+QuantumNumbers qn_ref = {18,  1, 1, 1, J_ref, 2};
+QuantumNumbers qn_fit = {-1, -1, 1, 1, J_fit, 2};
 
 
 
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
   /* Recast the solution to an array to print and use the solution */
   const PetscScalar *x_array;
   VecGetArrayRead(x, &x_array);
-  const double sol[] = { x_array[0], x_array[1] };
+  const double sol[] = { x_array[0], x_array[1], x_array[2] };
   VecRestoreArrayRead(x, &x_array);
 
   Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, sol[0], sol[1]);
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
     return 1;
   }
   
-  fprintf(fp,"#R: %.15f C: %.15f\n", sol[0], sol[1]);
+  fprintf(fp,"#R: %.15f C11: %.15f\n C6: %.15f\n", sol[0], sol[1], sol[2]);
   for (int i=0; i<NCHANNELS; i++) {
     fprintf(fp,"#c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
     fprintf(fp,"#Scattering length: %.15f\n", -1/obs.coeffs[0].cba[0]);
@@ -234,9 +234,10 @@ PetscErrorCode EvaluateFunction(Tao tao, Vec X, Vec F, void *ptr)
 
   double sum_f = 0.0;
   // Compute the residuals for each observation
-  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, x[0], x[1]);
+  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, x[0], x[1], x[2]);
   double weight[] = { 150., 200., 1.};
-
+  
+  PetscPrintf(PETSC_COMM_SELF, "\n\nR: %.15f C11: %.15f C6: %.15f\n", x[0], x[1], x[2]);
   for (int ich=0; ich < NCHANNELS; ich++) {
     coeffs coeff = obs.coeffs[ich];
     for (i = 0; i < NOBSERVATIONS; i++) {
@@ -246,10 +247,9 @@ PetscErrorCode EvaluateFunction(Tao tao, Vec X, Vec F, void *ptr)
     add_penalty_limits(&coeff, f);
 
     for (i=0; i < NOBSERVATIONS; i++) sum_f += f[i]*f[i];
-    PetscPrintf(PETSC_COMM_SELF, "\n\nR: %.15f C: %.15f\n", x[0], x[1]);
     PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", coeff.cba[0],coeff.cba[1],coeff.cba[2]);
-    PetscPrintf(PETSC_COMM_SELF, "sum_f: %.15f\n", sum_f);
   }
+  PetscPrintf(PETSC_COMM_SELF, "sum_f: %.15f\n", sum_f);
 
   
 
@@ -303,8 +303,9 @@ PetscErrorCode FormStartingPoint(Vec X)
 
   PetscFunctionBegin;
   PetscCall(VecGetArray(X, &x));
-  x[0] =  0.77;    
-  x[1] = -2.213333;
+  x[0] =  2.840;    
+  x[1] =  0.3;
+  x[2] = -1.2;
 //   x[0] =  0.5; // Try these to see that changing to a different number failes to make it converge
 //   x[1] = -1;   // Try these to see that changing to a different number failes to make it converge
 // x[0] = 0.7;    // Try these to see that changing even a little failes to find the best point
@@ -392,7 +393,7 @@ PetscErrorCode InitializeData(AppCtx *user)
   PetscReal *y = user->y;
 
   PetscPrintf(PETSC_COMM_SELF, "Evaluating data to be fitted with AV18...\n");
-  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_ref, 0.0, 0.0);
+  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_ref, 0.0, 0.0, 0.0);
 
   for (int ich=0; ich < NCHANNELS; ich++) {
     coeffs coeff = obs.coeffs[ich];

@@ -70,7 +70,7 @@ coeffs scattering_numerov(const double* energies, double *kcotd, const int ne,
  * @return An Observables structure containing the computed coefficients for each J.
  */
 Observables scattering_numerov_quantum_num(const double* energies, double *kcotd[], const int ne,
-                                                   const QuantumNumbers *qn, const double r, const double c) {
+                                                   const QuantumNumbers *qn, const double *LECS) {
   Observables observables;
   observables.coeffs = (coeffs*) malloc(qn->nJ * sizeof(coeffs));
   if (observables.coeffs == NULL) {
@@ -84,7 +84,7 @@ Observables scattering_numerov_quantum_num(const double* energies, double *kcotd
   
   for (int i = 0; i < qn->nJ; i++) {
     int J = qn->J[i];
-    observables.coeffs[i] = scattering_numerov(energies, kcotd[i], ne, ipot, ilb, L, S, J, r, c);
+    observables.coeffs[i] = scattering_numerov(energies, kcotd[i], ne, ipot, ilb, L, S, J, LECS[0], LECS[1]);
   }
   return observables;
 }
