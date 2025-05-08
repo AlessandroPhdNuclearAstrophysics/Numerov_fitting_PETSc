@@ -28,9 +28,7 @@ SOURCES_F   :=  $(SRCDIR)/libs/potentials/av14.f \
 								$(SRCDIR)/libs/potentials/EFT_pless.f \
 								$(SRCDIR)/libs/potentials/EFT_pless_utils.f
 
-SOURCES_C 	:=  $(SRCDIR)/${NAME}.c \
-								$(SRCDIR)/libs/potentials/coulomb.c
-
+SOURCES_C 	:=  $(SRCDIR)/${NAME}.c
 HEADERS			:=  $(SRCDIR)/libs/scattering_single_channel.h \
 								$(SRCDIR)/libs/physical_constants.h
 						
