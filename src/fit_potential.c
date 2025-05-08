@@ -149,10 +149,14 @@ int main(int argc, char **argv)
   VecRestoreArrayRead(x, &x_array);
 
   coeffs coeff = scattering_numerov(energies, kcotd, ne, ipot, ilb, sol[0], sol[1]);
-  PetscPrintf(PETSC_COMM_SELF, "\n\nR: %.15f C: %.15f\n", sol[0], sol[1]);
+  PetscPrintf(PETSC_COMM_SELF, "\n\n----------------------------------------\n");
+  PetscPrintf(PETSC_COMM_SELF, "SOLUTION\n");
+  PetscPrintf(PETSC_COMM_SELF, "----------------------------------------\n");
+  PetscPrintf(PETSC_COMM_SELF, "R: %.15f C: %.15f\n", sol[0], sol[1]);
   PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", coeff.cba[0],coeff.cba[1],coeff.cba[2]);
   PetscPrintf(PETSC_COMM_SELF, "Scattering length: %f15\n", -1/coeff.cba[0]);
   PetscPrintf(PETSC_COMM_SELF, "Effective range  : %f15\n\n\n", 2*coeff.cba[1]);
+  
   
 
   /* Print everything to file */

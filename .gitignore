@@ -9,3 +9,5 @@ bin/*
 
 # Ignore all vscode workspace files
 .vscode/
+
+*eps
