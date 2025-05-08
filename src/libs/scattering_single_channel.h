@@ -19,6 +19,12 @@ typedef struct {
   coeffs* coeffs; /**< Pointer to an array of coeffs structures. */
 } Observables;
 
+typedef struct {
+  PetscReal R;
+  PetscReal *LECS;
+  PetscInt NLECS;
+} LECs;
+
 /**
  * @struct QuantumNumbers
  * @brief Represents quantum numbers used in scattering calculations.
@@ -87,7 +93,7 @@ coeffs scattering_numerov(const double* energies, double *kcotd, const int ne,
  * @return An Observables structure containing the computed coefficients for each J.
  */
 Observables scattering_numerov_quantum_num(const double* energies, double *kcotd[], const int ne,
-                                                   const QuantumNumbers *qn, int nc, const double *LECS) {
+                                                   const QuantumNumbers *qn, const LECs *LECS) {
   Observables observables;
   observables.coeffs = (coeffs*) malloc(qn->nJ * sizeof(coeffs));
   if (observables.coeffs == NULL) {
@@ -98,10 +104,13 @@ Observables scattering_numerov_quantum_num(const double* energies, double *kcotd
   int ilb = qn->ilb;
   int L = qn->L;
   int S = qn->S;
+  int nc = LECS->NLECS;
+  double *lecs = LECS->LECS;
+  double R = LECS->R;
   
   for (int i = 0; i < qn->nJ; i++) {
     int J = qn->J[i];
-    observables.coeffs[i] = scattering_numerov(energies, kcotd[i], ne, ipot, ilb, L, S, J, nc, LECS[0], LECS);
+    observables.coeffs[i] = scattering_numerov(energies, kcotd[i], ne, ipot, ilb, L, S, J, nc, R, lecs);
   }
   return observables;
 }

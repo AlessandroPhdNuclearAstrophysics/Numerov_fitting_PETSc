@@ -11,12 +11,12 @@
 #include "libs/scattering_single_channel.h"
 #include "libs/physical_constants.h"
 
-static char help[] = "Find the constants to fit the 1P1 channel evaluated \n\
+static char help[] = "Find the constants to fit the 3PJ channel evaluated \n\
             with AV18, but using the EFT-pless model \n";
 
-#define NOBSERVATIONS 3
+#define NOBSERVATIONS 6
 #define NPARAMETERS   3
-#define NCHANNELS NOBSERVATIONS
+#define NCHANNELS NOBSERVATIONS/3
 
 
 const int ipot_ref = 18;
@@ -36,6 +36,8 @@ PetscInt J_fit[] = {0, 1};
 
 QuantumNumbers qn_ref = {18,  1, 1, 1, J_ref, 2};
 QuantumNumbers qn_fit = {-1, -1, 1, 1, J_fit, 2};
+
+LECs lecs = {0.0, NULL, 4};
 
 
 
@@ -100,6 +102,12 @@ int main(int argc, char **argv)
   }
   for (int ie=1; ie<= ne; ie++) energies[ie-1] = he*ie;
 
+  lecs.LECS = (double *) malloc(sizeof(double)*lecs.NLECS);
+  lecs.LECS[0] = 0.0;
+  lecs.LECS[1] = 0.0;
+  lecs.LECS[2] = -0.136793827E1;
+  lecs.LECS[3] =  0.219960910E-1;
+
 
   PetscFunctionBeginUser;
   /* MACRO PetscFunctionBeginUser:
@@ -122,16 +130,16 @@ int main(int argc, char **argv)
 
   /* Creates the 2 dimensional vectors to set the upper and lower bounds 
       for the parameters */
-  VecCreateSeq(PETSC_COMM_SELF, 2, &x);
+  VecCreateSeq(PETSC_COMM_SELF, NPARAMETERS, &x);
   VecDuplicate(x, &xl);  // limiti inferiori
   VecDuplicate(x, &xu);  // limiti superiori
 
   /* Set the limits on R (cutoff) and C(depth of the potential) */
-  PetscScalar lower[2] = {0.5, -100.};  // r min, c min
-  PetscScalar upper[2] = {3.5, 0.5};  // r max, c max
+  PetscScalar lower[3] = {0.5, -20, -20};  // r min, c min
+  PetscScalar upper[3] = {3.5,  20,  20};  // r max, c max
 
-  VecSetValues(xl, 2, (PetscInt[]){0,1}, lower, INSERT_VALUES);
-  VecSetValues(xu, 2, (PetscInt[]){0,1}, upper, INSERT_VALUES);
+  VecSetValues(xl, 3, (PetscInt[]){0,1,2}, lower, INSERT_VALUES);
+  VecSetValues(xu, 3, (PetscInt[]){0,1,2}, upper, INSERT_VALUES);
   VecAssemblyBegin(xl); VecAssemblyEnd(xl);
   VecAssemblyBegin(xu); VecAssemblyEnd(xu);
 
@@ -157,11 +165,14 @@ int main(int argc, char **argv)
   const double sol[] = { x_array[0], x_array[1], x_array[2] };
   VecRestoreArrayRead(x, &x_array);
 
-  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, sol[0], sol[1]);
+  lecs.R = sol[0];
+  lecs.LECS[0] = sol[1];
+  lecs.LECS[1] = sol[2];
+  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, &lecs);
   PetscPrintf(PETSC_COMM_SELF, "\n\n----------------------------------------\n");
   PetscPrintf(PETSC_COMM_SELF, "SOLUTION\n");
   PetscPrintf(PETSC_COMM_SELF, "----------------------------------------\n");
-  PetscPrintf(PETSC_COMM_SELF, "R: %.15f C: %.15f\n", sol[0], sol[1]);
+  PetscPrintf(PETSC_COMM_SELF, "R: %.15f C11: %.15f C6: %.15f\n", sol[0], sol[1], sol[2]);
   for (int i=0; i<NCHANNELS; i++){
     PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
     PetscPrintf(PETSC_COMM_SELF, "Scattering length: %f15\n", -1/obs.coeffs[i].cba[0]);
@@ -169,7 +180,7 @@ int main(int argc, char **argv)
   }
 
   /* Print everything to file */
-  FILE *fp  = fopen("output/kcotd_1P1.dat","write");
+  FILE *fp  = fopen("output/kcotd_3PJ.dat","write");
   if (fp==NULL) {
     SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Error opening file");
     return 1;
@@ -234,7 +245,7 @@ PetscErrorCode EvaluateFunction(Tao tao, Vec X, Vec F, void *ptr)
 
   double sum_f = 0.0;
   // Compute the residuals for each observation
-  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, x[0], x[1], x[2]);
+  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, &lecs);
   double weight[] = { 150., 200., 1.};
   
   PetscPrintf(PETSC_COMM_SELF, "\n\nR: %.15f C11: %.15f C6: %.15f\n", x[0], x[1], x[2]);
@@ -392,17 +403,19 @@ PetscErrorCode InitializeData(AppCtx *user)
 {
   PetscReal *y = user->y;
 
-  PetscPrintf(PETSC_COMM_SELF, "Evaluating data to be fitted with AV18...\n");
-  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_ref, 0.0, 0.0, 0.0);
+  PetscPrintf(PETSC_COMM_SELF, "\n\n\nEvaluating data to be fitted with AV18...\n");
+  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_ref, &lecs);
 
   for (int ich=0; ich < NCHANNELS; ich++) {
     coeffs coeff = obs.coeffs[ich];
-    PetscPrintf(PETSC_COMM_SELF, "\n\n\nx[0]: %.15f x[1]: %.15f x[2]: %.15f\n", coeff.cba[0], coeff.cba[1], coeff.cba[2]);
+    PetscPrintf(PETSC_COMM_SELF, "x[0]: %.15f x[1]: %.15f x[2]: %.15f\n", coeff.cba[0], coeff.cba[1], coeff.cba[2]);
+    PetscPrintf(PETSC_COMM_SELF, "#Scattering length: %.15f\n", -1/coeff.cba[0]);
+    PetscPrintf(PETSC_COMM_SELF, "#Effective range  : %.15f\n\n\n", 2*coeff.cba[1]);
     y[0] = coeff.cba[0];
     y[1] = coeff.cba[1];
     y[2] = coeff.cba[2];
   }
-  FILE *fp  = fopen("output/kcotd_1P1_data.dat","write");
+  FILE *fp  = fopen("output/kcotd_3P1_data.dat","write");
   if (fp==NULL) {
     SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Error opening file");
     return 1;
