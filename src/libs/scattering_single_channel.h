@@ -48,9 +48,9 @@ typedef struct {
  * @return A coeffs structure containing the computed coefficients.
  */
 coeffs scattering_numerov(const double* energies, double *kcotd, const int ne,
-        const int ipot, const int ilb, const int L, const int S, const int J, const double R, const double *LECS) {
+        const int ipot, const int ilb, const int L, const int S, const int J, int nc, const double R, const double *LECS) {
   coeffs coeff;
-
+  
   extern void numerov_scattering_single_channel_(
     const double *energies, 
     double *k_cot_delta, 
@@ -60,12 +60,18 @@ coeffs scattering_numerov(const double* energies, double *kcotd, const int ne,
     const int *J, 
     const int *ipot, 
     const int *ilb, 
+    const int *nc,
     const double *LECS, 
     const double *R, 
     double *coeff
   );
 
-  numerov_scattering_single_channel_(energies, kcotd, &ne, &L, &S, &J, &ipot, &ilb, LECS, &R, (double *)&coeff);
+  if (LECS == NULL) {
+    const double tmp[] = {0.0};
+    numerov_scattering_single_channel_(energies, kcotd, &ne, &L, &S, &J, &ipot, &ilb, &nc, tmp, &R, (double *)&coeff);
+    return coeff;
+  }
+  numerov_scattering_single_channel_(energies, kcotd, &ne, &L, &S, &J, &ipot, &ilb, &nc, LECS, &R, (double *)&coeff);
   return coeff;  
 }
 
@@ -81,7 +87,7 @@ coeffs scattering_numerov(const double* energies, double *kcotd, const int ne,
  * @return An Observables structure containing the computed coefficients for each J.
  */
 Observables scattering_numerov_quantum_num(const double* energies, double *kcotd[], const int ne,
-                                                   const QuantumNumbers *qn, const double *LECS) {
+                                                   const QuantumNumbers *qn, int nc, const double *LECS) {
   Observables observables;
   observables.coeffs = (coeffs*) malloc(qn->nJ * sizeof(coeffs));
   if (observables.coeffs == NULL) {
@@ -95,7 +101,7 @@ Observables scattering_numerov_quantum_num(const double* energies, double *kcotd
   
   for (int i = 0; i < qn->nJ; i++) {
     int J = qn->J[i];
-    observables.coeffs[i] = scattering_numerov(energies, kcotd[i], ne, ipot, ilb, L, S, J, LECS[0], LECS);
+    observables.coeffs[i] = scattering_numerov(energies, kcotd[i], ne, ipot, ilb, L, S, J, nc, LECS[0], LECS);
   }
   return observables;
 }

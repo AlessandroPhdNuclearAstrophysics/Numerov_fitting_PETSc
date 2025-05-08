@@ -148,7 +148,8 @@ int main(int argc, char **argv)
   const double sol[] = { x_array[0], x_array[1] };
   VecRestoreArrayRead(x, &x_array);
 
-  coeffs coeff = scattering_numerov(energies, kcotd, ne, ipot, ilb, 1, 0, 1, sol[0], sol+1);
+  const double *LEC = &sol[1];
+  coeffs coeff = scattering_numerov(energies, kcotd, ne, ipot, ilb, 1, 0, 1, 1, sol[0], LEC);
   PetscPrintf(PETSC_COMM_SELF, "\n\n----------------------------------------\n");
   PetscPrintf(PETSC_COMM_SELF, "SOLUTION\n");
   PetscPrintf(PETSC_COMM_SELF, "----------------------------------------\n");
@@ -223,7 +224,8 @@ PetscErrorCode EvaluateFunction(Tao tao, Vec X, Vec F, void *ptr)
 
   double sum_f = 0.0;
   // Compute the residuals for each observation
-  coeffs coeff = scattering_numerov(energies, kcotd, ne, ipot, ilb, 1, 0, 1, x[0], x+1);
+  const double *LEC = &x[1];
+  coeffs coeff = scattering_numerov(energies, kcotd, ne, ipot, ilb, 1, 0, 1, 1, x[0], LEC);
   double weight[] = { 150., 200., 1.};
 
   for (i = 0; i < NOBSERVATIONS; i++) {
@@ -379,7 +381,7 @@ PetscErrorCode InitializeData(AppCtx *user)
   PetscReal *y = user->y;
 
   PetscPrintf(PETSC_COMM_SELF, "Evaluating data to be fitted with AV18...\n");
-  coeffs coeff = scattering_numerov(energies, kcotd, ne, ipot_ref, ilb_ref, 1, 0, 1, 0.0, NULL);
+  coeffs coeff = scattering_numerov(energies, kcotd, ne, ipot_ref, ilb_ref, 1, 0, 1, 0.0, 1, NULL);
   PetscPrintf(PETSC_COMM_SELF, "\n\n\nx[0]: %.15f x[1]: %.15f x[2]: %.15f\n", coeff.cba[0], coeff.cba[1], coeff.cba[2]);
   y[0] = coeff.cba[0];
   y[1] = coeff.cba[1];
