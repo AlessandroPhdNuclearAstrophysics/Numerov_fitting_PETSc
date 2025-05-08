@@ -58,15 +58,6 @@ PetscErrorCode EvaluateFunction(Tao, Vec, Vec, void *);
 PetscErrorCode EvaluateJacobian(Tao, Vec, Mat, Mat, void *);
 PetscErrorCode ComputeParameterUncertainty(Mat, Vec);
 
-/* Routine to set hard limits on the coefficients and apply the penality to the chi function */
-void add_penalty_limits(const coeffs *coeff, PetscReal *f) {
-    if (abs(coeff->cba[2]) > 10) f[2] += 1.e6;
-    if (abs(coeff->cba[1]+3.2)/3.2*100 > 10) f[1] += 1.e6;
-    if (abs(coeff->cba[0]+0.35)/0.35*100 > 80) f[0] += 1.e6;
-}
-
-
-
 
 /*--------------------------------------------------------------------*/
 
@@ -186,7 +177,7 @@ int main(int argc, char **argv)
     return 1;
   }
   
-  fprintf(fp,"#R: %.15f C11: %.15f\n C6: %.15f\n", sol[0], sol[1], sol[2]);
+  fprintf(fp,"#R: %.15f C11: %.15f C6: %.15f\n", sol[0], sol[1], sol[2]);
   for (int i=0; i<NCHANNELS; i++) {
     fprintf(fp,"#c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
     fprintf(fp,"#Scattering length: %.15f\n", -1/obs.coeffs[0].cba[0]);
@@ -245,17 +236,19 @@ PetscErrorCode EvaluateFunction(Tao tao, Vec X, Vec F, void *ptr)
 
   double sum_f = 0.0;
   // Compute the residuals for each observation
+  lecs.R = x[0];
+  lecs.LECS[0] = x[1];
+  lecs.LECS[1] = x[2];
   Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, &lecs);
-  double weight[] = { 150., 200., 1.};
+  double weight[] = { 5, 3, 0};
   
   PetscPrintf(PETSC_COMM_SELF, "\n\nR: %.15f C11: %.15f C6: %.15f\n", x[0], x[1], x[2]);
   for (int ich=0; ich < NCHANNELS; ich++) {
     coeffs coeff = obs.coeffs[ich];
-    for (i = 0; i < NOBSERVATIONS; i++) {
-      f[i] = y[i] - coeff.cba[i];
-      f[i] *= weight[i];
+    for (i = 0; i < 3; i++) {
+      f[ich*3 + i] = (y[ich*3 + i] - coeff.cba[i])/(y[ich*3 + i] + coeff.cba[i]);
+      f[ich*3 + i] *= weight[i];
     }
-    add_penalty_limits(&coeff, f);
 
     for (i=0; i < NOBSERVATIONS; i++) sum_f += f[i]*f[i];
     PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", coeff.cba[0],coeff.cba[1],coeff.cba[2]);
@@ -314,9 +307,12 @@ PetscErrorCode FormStartingPoint(Vec X)
 
   PetscFunctionBegin;
   PetscCall(VecGetArray(X, &x));
-  x[0] =  2.840;    
-  x[1] =  0.3;
-  x[2] = -1.2;
+  x[0] =  1.8;    
+  x[1] =  0.6;
+  x[2] = -1.0;
+  lecs.R = x[0];
+  lecs.LECS[0] = x[1];
+  lecs.LECS[1] = x[2];
 //   x[0] =  0.5; // Try these to see that changing to a different number failes to make it converge
 //   x[1] = -1;   // Try these to see that changing to a different number failes to make it converge
 // x[0] = 0.7;    // Try these to see that changing even a little failes to find the best point
@@ -411,11 +407,11 @@ PetscErrorCode InitializeData(AppCtx *user)
     PetscPrintf(PETSC_COMM_SELF, "x[0]: %.15f x[1]: %.15f x[2]: %.15f\n", coeff.cba[0], coeff.cba[1], coeff.cba[2]);
     PetscPrintf(PETSC_COMM_SELF, "#Scattering length: %.15f\n", -1/coeff.cba[0]);
     PetscPrintf(PETSC_COMM_SELF, "#Effective range  : %.15f\n\n\n", 2*coeff.cba[1]);
-    y[0] = coeff.cba[0];
-    y[1] = coeff.cba[1];
-    y[2] = coeff.cba[2];
+    y[ich * 3 + 0] = coeff.cba[0];
+    y[ich * 3 + 1] = coeff.cba[1];
+    y[ich * 3 + 2] = coeff.cba[2];
   }
-  FILE *fp  = fopen("output/kcotd_3P1_data.dat","write");
+  FILE *fp  = fopen("output/kcotd_3PJ_data.dat","write");
   if (fp==NULL) {
     SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Error opening file");
     return 1;
