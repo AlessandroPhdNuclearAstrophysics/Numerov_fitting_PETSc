@@ -2,7 +2,8 @@
 
 RM := rm -vf
 MAKE := make
-TARGET := fit_potential.x
+NAME := fit_potential
+TARGET := $(NAME).x
 PETSCDIR := $(HOME)/petsc
 
 OUTPUT_DIR := output
@@ -21,8 +22,9 @@ ifeq ($(UNAME), Darwin)
     SEDI := sed -i ''  # Use GNU sed on macOS if installed via Homebrew
 endif
 
+
 all: create_folders
-	@$(MAKE) -j -C build all
+	@$(MAKE) -j -C build all NAME=$(NAME) 
 
 print_os:
 	@echo "Operating System: $(UNAME). Using $(SEDI) for sed commands."

@@ -16,6 +16,7 @@ static char help[] = "Find the constants to fit the 1P1 channel evaluated \n\
 
 #define NOBSERVATIONS 3
 #define NPARAMETERS   2
+#define NCHANNELS NOBSERVATIONS/3
 
 
 const int ipot_ref = 18;
@@ -28,7 +29,13 @@ const double emax = 1.0;
 const double he   = (emax-emin)/ne;
 double *energies;
 double *k2;
-double *kcotd;
+double *kcotd[NCHANNELS];
+
+PetscInt J_ref[] = {1};
+PetscInt J_fit[] = {1};
+
+QuantumNumbers qn_ref = {18,  1, 1, 0, J_ref, 1};
+QuantumNumbers qn_fit = {-1, -1, 1, 0, J_fit, 1};
 
 
 
@@ -88,7 +95,9 @@ int main(int argc, char **argv)
   /* Preparing the values of energies to evaluate k^3 cot(delta) and 
       therefore the quadratic fitting parameters a, b and c. */
   energies = (double *) malloc(sizeof(double)*ne);
-  kcotd    = (double *) malloc(sizeof(double)*ne);
+  for (int i=0; i<NCHANNELS; i++) {
+    kcotd[i] = (double *) malloc(sizeof(double)*ne);
+  }
   for (int ie=1; ie<= ne; ie++) energies[ie-1] = he*ie;
 
 
@@ -148,16 +157,16 @@ int main(int argc, char **argv)
   const double sol[] = { x_array[0], x_array[1] };
   VecRestoreArrayRead(x, &x_array);
 
-  coeffs coeff = scattering_numerov(energies, kcotd, ne, ipot, ilb, 1, 0, 1, sol[0], sol[1]);
+  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, sol[0], sol[1]);
   PetscPrintf(PETSC_COMM_SELF, "\n\n----------------------------------------\n");
   PetscPrintf(PETSC_COMM_SELF, "SOLUTION\n");
   PetscPrintf(PETSC_COMM_SELF, "----------------------------------------\n");
   PetscPrintf(PETSC_COMM_SELF, "R: %.15f C: %.15f\n", sol[0], sol[1]);
-  PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", coeff.cba[0],coeff.cba[1],coeff.cba[2]);
-  PetscPrintf(PETSC_COMM_SELF, "Scattering length: %f15\n", -1/coeff.cba[0]);
-  PetscPrintf(PETSC_COMM_SELF, "Effective range  : %f15\n\n\n", 2*coeff.cba[1]);
-  
-  
+  for (int i=0; i<NCHANNELS; i++){
+    PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
+    PetscPrintf(PETSC_COMM_SELF, "Scattering length: %f15\n", -1/obs.coeffs[i].cba[0]);
+    PetscPrintf(PETSC_COMM_SELF, "Effective range  : %f15\n\n\n", 2*obs.coeffs[i].cba[1]);
+  }
 
   /* Print everything to file */
   FILE *fp  = fopen("output/kcotd_1P1.dat","write");
@@ -167,11 +176,13 @@ int main(int argc, char **argv)
   }
   
   fprintf(fp,"#R: %.15f C: %.15f\n", sol[0], sol[1]);
-  fprintf(fp,"#c: %.15f\tb: %.15f\ta: %.15f\n", coeff.cba[0],coeff.cba[1],coeff.cba[2]);
-  fprintf(fp,"#Scattering length: %.15f\n", -1/coeff.cba[0]);
-  fprintf(fp,"#Effective range  : %.15f\n\n\n", 2*coeff.cba[1]);
+  for (int i=0; i<NCHANNELS; i++) {
+    fprintf(fp,"#c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
+    fprintf(fp,"#Scattering length: %.15f\n", -1/obs.coeffs[0].cba[0]);
+    fprintf(fp,"#Effective range  : %.15f\n\n\n", 2*obs.coeffs[0].cba[1]);
+    for (int ie=1; ie <= ne; ie++) fprintf(fp, "%.15f\t%.15f\n", k2_from_E(energies[ie-1]), kcotd[i][ie-1]);
+  }
 
-  for (int ie=1; ie <= ne; ie++) fprintf(fp, "%.15f\t%.15f\n", k2_from_E(energies[ie-1]), kcotd[ie-1]);
   fclose(fp);
 
   /* Free TAO data structures */
@@ -223,22 +234,24 @@ PetscErrorCode EvaluateFunction(Tao tao, Vec X, Vec F, void *ptr)
 
   double sum_f = 0.0;
   // Compute the residuals for each observation
-  coeffs coeff = scattering_numerov(energies, kcotd, ne, ipot, ilb, 1, 0, 1, x[0], x[1]);
+  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, x[0], x[1]);
   double weight[] = { 150., 200., 1.};
 
-  for (i = 0; i < NOBSERVATIONS; i++) {
-    f[i] = y[i] - coeff.cba[i];
-    f[i] *= weight[i];
+  for (int ich=0; ich < NCHANNELS; ich++) {
+    coeffs coeff = obs.coeffs[ich];
+    for (i = 0; i < NOBSERVATIONS; i++) {
+      f[i] = y[i] - coeff.cba[i];
+      f[i] *= weight[i];
+    }
+    add_penalty_limits(&coeff, f);
+
+    for (i=0; i < NOBSERVATIONS; i++) sum_f += f[i]*f[i];
+    PetscPrintf(PETSC_COMM_SELF, "\n\nR: %.15f C: %.15f\n", x[0], x[1]);
+    PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", coeff.cba[0],coeff.cba[1],coeff.cba[2]);
+    PetscPrintf(PETSC_COMM_SELF, "sum_f: %.15f\n", sum_f);
   }
-  add_penalty_limits(&coeff, f);
-
-  for (i=0; i < NOBSERVATIONS; i++) sum_f += f[i]*f[i];
-
 
   
-  PetscPrintf(PETSC_COMM_SELF, "\n\nR: %.15f C: %.15f\n", x[0], x[1]);
-  PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", coeff.cba[0],coeff.cba[1],coeff.cba[2]);
-  PetscPrintf(PETSC_COMM_SELF, "sum_f: %.15f\n", sum_f);
 
 
   PetscCall(VecRestoreArrayRead(X, &x)); // Restore the array inside vector X
@@ -379,21 +392,29 @@ PetscErrorCode InitializeData(AppCtx *user)
   PetscReal *y = user->y;
 
   PetscPrintf(PETSC_COMM_SELF, "Evaluating data to be fitted with AV18...\n");
-  coeffs coeff = scattering_numerov(energies, kcotd, ne, ipot_ref, ilb_ref, 1, 0, 1, 0.0, 0.0);
-  PetscPrintf(PETSC_COMM_SELF, "\n\n\nx[0]: %.15f x[1]: %.15f x[2]: %.15f\n", coeff.cba[0], coeff.cba[1], coeff.cba[2]);
-  y[0] = coeff.cba[0];
-  y[1] = coeff.cba[1];
-  y[2] = coeff.cba[2];
+  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_ref, 0.0, 0.0);
+
+  for (int ich=0; ich < NCHANNELS; ich++) {
+    coeffs coeff = obs.coeffs[ich];
+    PetscPrintf(PETSC_COMM_SELF, "\n\n\nx[0]: %.15f x[1]: %.15f x[2]: %.15f\n", coeff.cba[0], coeff.cba[1], coeff.cba[2]);
+    y[0] = coeff.cba[0];
+    y[1] = coeff.cba[1];
+    y[2] = coeff.cba[2];
+  }
   FILE *fp  = fopen("output/kcotd_1P1_data.dat","write");
   if (fp==NULL) {
     SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Error opening file");
     return 1;
   }
   fprintf(fp,"# --- potential data to be fitted are a, b and c ---\n");
-  fprintf(fp,"#c: %.15f\tb: %.15f\ta: %.15f\n", coeff.cba[0],coeff.cba[1],coeff.cba[2]);
-  fprintf(fp,"#Scattering length: %.15f\n", -1/coeff.cba[0]);
-  fprintf(fp,"#Effective range  : %.15f\n\n\n", 2*coeff.cba[1]);
-  for (int ie=1; ie <= ne; ie++) fprintf(fp, "%.15f\t%.15f\n", k2_from_E(energies[ie-1]), kcotd[ie-1]);
+  for (int ich=0; ich < NCHANNELS; ich++) {
+    coeffs coeff = obs.coeffs[ich];
+    fprintf(fp,"# --- channel %d ---\n", ich);
+    fprintf(fp,"#c: %.15f\tb: %.15f\ta: %.15f\n", coeff.cba[0],coeff.cba[1],coeff.cba[2]);
+    fprintf(fp,"#Scattering length: %.15f\n", -1/coeff.cba[0]);
+    fprintf(fp,"#Effective range  : %.15f\n\n\n", 2*coeff.cba[1]);
+    for (int ie=1; ie <= ne; ie++) fprintf(fp, "%.15f\t%.15f\n", k2_from_E(energies[ie-1]), kcotd[ich][ie-1]);
+  }
   fclose(fp);
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
