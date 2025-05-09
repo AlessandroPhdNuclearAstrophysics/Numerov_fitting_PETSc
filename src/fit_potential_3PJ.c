@@ -150,58 +150,60 @@ int main(int argc, char **argv)
   /* Associates these limits to TAO */
   TaoSetVariableBounds(tao, xl, xu);
 
+  for (int i_point=0; i_point<num_starting_points; i_point++) {
+    /* Get the starting point from the file */
+    data = get_row(i_point);
 
-  data = get_row(0);
+    /* Set the function routines. */
+    PetscCall(InitializeData(&user));
+    PetscCall(FormStartingPoint(x));
+    PetscCall(TaoSetSolution(tao, x));
+    PetscCall(TaoSetResidualRoutine(tao, f, EvaluateFunction, (void *)&user));
 
-  /* Set the function routines. */
-  PetscCall(InitializeData(&user));
-  PetscCall(FormStartingPoint(x));
-  PetscCall(TaoSetSolution(tao, x));
-  PetscCall(TaoSetResidualRoutine(tao, f, EvaluateFunction, (void *)&user));
+    /* Check for any TAO command line arguments */
+    PetscCall(TaoSetFromOptions(tao));
+    PetscCall(TaoSetConvergenceHistory(tao, hist, resid, 0, lits, 100, PETSC_TRUE));
 
-  /* Check for any TAO command line arguments */
-  PetscCall(TaoSetFromOptions(tao));
-  PetscCall(TaoSetConvergenceHistory(tao, hist, resid, 0, lits, 100, PETSC_TRUE));
+    /* Perform the Solve */
+    PetscCall(TaoSolve(tao));
+    
+    /* Recast the solution to an array to print and use the solution */
+    const PetscScalar *x_array;
+    VecGetArrayRead(x, &x_array);
+    const double sol[] = { x_array[0], x_array[1], x_array[2] };
+    VecRestoreArrayRead(x, &x_array);
 
-  /* Perform the Solve */
-  PetscCall(TaoSolve(tao));
-  
-  /* Recast the solution to an array to print and use the solution */
-  const PetscScalar *x_array;
-  VecGetArrayRead(x, &x_array);
-  const double sol[] = { x_array[0], x_array[1], x_array[2] };
-  VecRestoreArrayRead(x, &x_array);
+    lecs.R = sol[0];
+    lecs.LECS[0] = sol[1];
+    lecs.LECS[1] = sol[2];
+    Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, &lecs);
+    PetscPrintf(PETSC_COMM_SELF, "\n\n----------------------------------------\n");
+    PetscPrintf(PETSC_COMM_SELF, "SOLUTION\n");
+    PetscPrintf(PETSC_COMM_SELF, "----------------------------------------\n");
+    PetscPrintf(PETSC_COMM_SELF, "R: %.15f C11: %.15f C6: %.15f\n", sol[0], sol[1], sol[2]);
+    for (int i=0; i<NCHANNELS; i++){
+      PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
+      PetscPrintf(PETSC_COMM_SELF, "Scattering length: %f15\n", -1/obs.coeffs[i].cba[0]);
+      PetscPrintf(PETSC_COMM_SELF, "Effective range  : %f15\n\n\n", 2*obs.coeffs[i].cba[1]);
+    }
 
-  lecs.R = sol[0];
-  lecs.LECS[0] = sol[1];
-  lecs.LECS[1] = sol[2];
-  Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, &lecs);
-  PetscPrintf(PETSC_COMM_SELF, "\n\n----------------------------------------\n");
-  PetscPrintf(PETSC_COMM_SELF, "SOLUTION\n");
-  PetscPrintf(PETSC_COMM_SELF, "----------------------------------------\n");
-  PetscPrintf(PETSC_COMM_SELF, "R: %.15f C11: %.15f C6: %.15f\n", sol[0], sol[1], sol[2]);
-  for (int i=0; i<NCHANNELS; i++){
-    PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
-    PetscPrintf(PETSC_COMM_SELF, "Scattering length: %f15\n", -1/obs.coeffs[i].cba[0]);
-    PetscPrintf(PETSC_COMM_SELF, "Effective range  : %f15\n\n\n", 2*obs.coeffs[i].cba[1]);
+    /* Print everything to file */
+    FILE *fp  = fopen(data.output_filename,"write");
+    if (fp==NULL) {
+      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Error opening file");
+      return 1;
+    }
+    
+    fprintf(fp,"#R: %.15f C11: %.15f C6: %.15f\n", sol[0], sol[1], sol[2]);
+    for (int i=0; i<NCHANNELS; i++) {
+      fprintf(fp,"#c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
+      fprintf(fp,"#Scattering length: %.15f\n", -1/obs.coeffs[0].cba[0]);
+      fprintf(fp,"#Effective range  : %.15f\n\n\n", 2*obs.coeffs[0].cba[1]);
+      for (int ie=1; ie <= ne; ie++) fprintf(fp, "%.15f\t%.15f\n", k2_from_E(energies[ie-1]), kcotd[i][ie-1]);
+    }
+
+    fclose(fp);
   }
-
-  /* Print everything to file */
-  FILE *fp  = fopen(data.output_filename,"write");
-  if (fp==NULL) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Error opening file");
-    return 1;
-  }
-  
-  fprintf(fp,"#R: %.15f C11: %.15f C6: %.15f\n", sol[0], sol[1], sol[2]);
-  for (int i=0; i<NCHANNELS; i++) {
-    fprintf(fp,"#c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
-    fprintf(fp,"#Scattering length: %.15f\n", -1/obs.coeffs[0].cba[0]);
-    fprintf(fp,"#Effective range  : %.15f\n\n\n", 2*obs.coeffs[0].cba[1]);
-    for (int ie=1; ie <= ne; ie++) fprintf(fp, "%.15f\t%.15f\n", k2_from_E(energies[ie-1]), kcotd[i][ie-1]);
-  }
-
-  fclose(fp);
 
   /* Free TAO data structures */
   PetscCall(TaoDestroy(&tao));
