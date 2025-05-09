@@ -10,6 +10,7 @@
 #include <petsctao.h>
 #include "libs/scattering_single_channel.h"
 #include "libs/physical_constants.h"
+#include "libs/read_input_file.h"
 
 static char help[] = "Find the constants to fit the 3PJ channel evaluated \n\
             with AV18, but using the EFT-pless model \n";
@@ -38,6 +39,8 @@ QuantumNumbers qn_ref = {18,  1, 1, 1, J_ref, 2};
 QuantumNumbers qn_fit = {-1, -1, 1, 1, J_fit, 2};
 
 LECs lecs = {0.0, NULL, 4};
+
+DataRow data;
 
 
 
@@ -81,8 +84,6 @@ int main(int argc, char **argv)
   PetscReal hist[100], resid[100];
   PetscInt  lits[100];
   AppCtx    user; /* user-defined work context */
-
-
   
 
   /* Preparing the values of energies to evaluate k^3 cot(delta) and 
@@ -111,6 +112,18 @@ int main(int argc, char **argv)
      differentiate between user functions and library functions. */
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
 
+  if (read_file("input_values_3PJ.dat") != 0) {
+    PetscPrintf(PETSC_COMM_SELF, "Error reading file\n");
+    return 1;
+  }
+  PetscPrintf(PETSC_COMM_SELF, "Input file read file successfully\n");
+  const int num_starting_points = get_total_rows();
+  if (num_starting_points < 1) {
+    PetscPrintf(PETSC_COMM_SELF, "No data found in the file\n");
+    return 1;
+  }
+  PetscPrintf(PETSC_COMM_SELF, "Number of starting points: %d\n", num_starting_points);
+
    /* Allocate vectors */
   PetscCall(VecCreateSeq(MPI_COMM_SELF, NPARAMETERS, &x));
   PetscCall(VecCreateSeq(MPI_COMM_SELF, NOBSERVATIONS, &f));
@@ -136,6 +149,9 @@ int main(int argc, char **argv)
 
   /* Associates these limits to TAO */
   TaoSetVariableBounds(tao, xl, xu);
+
+
+  data = get_row(0);
 
   /* Set the function routines. */
   PetscCall(InitializeData(&user));
@@ -171,7 +187,7 @@ int main(int argc, char **argv)
   }
 
   /* Print everything to file */
-  FILE *fp  = fopen("output/kcotd_3PJ.dat","write");
+  FILE *fp  = fopen(data.output_filename,"write");
   if (fp==NULL) {
     SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Error opening file");
     return 1;
@@ -307,9 +323,9 @@ PetscErrorCode FormStartingPoint(Vec X)
 
   PetscFunctionBegin;
   PetscCall(VecGetArray(X, &x));
-  x[0] =  1.8;    
-  x[1] =  0.6;
-  x[2] = -1.0;
+  x[0] =  data.R;    
+  x[1] =  data.C00;
+  x[2] =  data.C6;
   lecs.R = x[0];
   lecs.LECS[0] = x[1];
   lecs.LECS[1] = x[2];
