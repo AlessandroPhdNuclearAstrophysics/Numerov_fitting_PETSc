@@ -28,9 +28,12 @@ SOURCES_F   :=  $(SRCDIR)/libs/potentials/av14.f \
 								$(SRCDIR)/libs/potentials/EFT_pless.f \
 								$(SRCDIR)/libs/potentials/EFT_pless_utils.f
 
-SOURCES_C 	:=  $(SRCDIR)/${NAME}.c
+SOURCES_C 	:=  $(SRCDIR)/${NAME}.c \
+								$(SRCDIR)/libs/read_input_file.c
+
 HEADERS			:=  $(SRCDIR)/libs/scattering_single_channel.h \
-								$(SRCDIR)/libs/physical_constants.h
+								$(SRCDIR)/libs/physical_constants.h \
+								$(SRCDIR)/libs/read_input_file.h 
 						
 
 OBJECTS_F90 := $(patsubst $(SRCDIR)/%.f90, %.o, $(SOURCES_F90))
