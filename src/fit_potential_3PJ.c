@@ -41,7 +41,30 @@ QuantumNumbers qn_fit = {-1, -1, 1, 1, J_fit, 2};
 LECs lecs = {0.0, NULL, 4};
 
 DataRow data;
+const double weight[] = { 5, 30, 0.001};
 
+typedef struct {
+  double re;
+  double a;
+} ObsLowEnergy;
+
+void print_obs(const ObsLowEnergy *obs) {
+  printf("Scattering length: %.15f\n", obs->a);
+  printf("Effective range  : %.15f\n", obs->re);
+}
+
+double d_abs(double x) {
+  return (x < 0) ? -x : x;
+}
+
+ObsLowEnergy obs_AV18[NCHANNELS];
+ObsLowEnergy error_procent(const ObsLowEnergy *obs1, const ObsLowEnergy *obs2) {
+  ObsLowEnergy err;
+  err.re = 100*d_abs((obs1->re - obs2->re)/obs2->re);
+  err.a  = 100*d_abs((obs1->a  - obs2->a)/obs2->a);
+  
+  return err;
+}
 
 
 /* User-defined application context */
@@ -150,6 +173,25 @@ int main(int argc, char **argv)
   /* Associates these limits to TAO */
   TaoSetVariableBounds(tao, xl, xu);
 
+  // Ouput for multiple starting points
+  FILE *ffit = fopen("output/fit_potential_3PJ.dat", "r");
+  if (ffit == NULL) {
+    ffit = fopen("output/fit_potential_3PJ.dat", "w");
+    if (ffit == NULL) {
+      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Error opening file");
+      return 1;
+    }
+    fprintf(ffit, "R_11\tC_11\tC_7\twA\twB\twC\tA0\tB0\tC0\ta0\tr_e0\terr_a0\terr_re0\tA1\tB1\tC1\ta1\tr_e1\terr_a1\terr_re1\terr_tot\n");
+  } else {
+    fclose(ffit);
+    ffit = fopen("output/fit_potential_3PJ.dat", "a");
+    if (ffit == NULL) {
+      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Error opening file");
+      return 1;
+    }
+  }
+
+
   for (int i_point=0; i_point<num_starting_points; i_point++) {
     /* Get the starting point from the file */
     data = get_row(i_point);
@@ -179,12 +221,17 @@ int main(int argc, char **argv)
     Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, &lecs);
     PetscPrintf(PETSC_COMM_SELF, "\n\n----------------------------------------\n");
     PetscPrintf(PETSC_COMM_SELF, "SOLUTION\n");
+    PetscPrintf(PETSC_COMM_SELF, "Observables\n");
+    
     PetscPrintf(PETSC_COMM_SELF, "----------------------------------------\n");
     PetscPrintf(PETSC_COMM_SELF, "R: %.15f C11: %.15f C6: %.15f\n", sol[0], sol[1], sol[2]);
+    ObsLowEnergy obs_fit[2];
     for (int i=0; i<NCHANNELS; i++){
+      obs_fit[i].a  =-1/obs.coeffs[i].cba[0];
+      obs_fit[i].re = 2*obs.coeffs[i].cba[1];
       PetscPrintf(PETSC_COMM_SELF, "c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
-      PetscPrintf(PETSC_COMM_SELF, "Scattering length: %f15\n", -1/obs.coeffs[i].cba[0]);
-      PetscPrintf(PETSC_COMM_SELF, "Effective range  : %f15\n\n\n", 2*obs.coeffs[i].cba[1]);
+      PetscPrintf(PETSC_COMM_SELF, "Scattering length: %.15f\n", obs_fit[i].a);
+      PetscPrintf(PETSC_COMM_SELF, "Effective range  : %.15f\n\n\n", obs_fit[i].re);
     }
 
     /* Print everything to file */
@@ -197,13 +244,28 @@ int main(int argc, char **argv)
     fprintf(fp,"#R: %.15f C11: %.15f C6: %.15f\n", sol[0], sol[1], sol[2]);
     for (int i=0; i<NCHANNELS; i++) {
       fprintf(fp,"#c: %.15f\tb: %.15f\ta: %.15f\n", obs.coeffs[i].cba[0],obs.coeffs[i].cba[1],obs.coeffs[i].cba[2]);
-      fprintf(fp,"#Scattering length: %.15f\n", -1/obs.coeffs[0].cba[0]);
-      fprintf(fp,"#Effective range  : %.15f\n\n\n", 2*obs.coeffs[0].cba[1]);
+      fprintf(fp,"#Scattering length: %.15f\n", -1/obs.coeffs[i].cba[0]);
+      fprintf(fp,"#Effective range  : %.15f\n\n\n", 2*obs.coeffs[i].cba[1]);
       for (int ie=1; ie <= ne; ie++) fprintf(fp, "%.15f\t%.15f\n", k2_from_E(energies[ie-1]), kcotd[i][ie-1]);
     }
 
     fclose(fp);
+    
+    double err_proc = 0.0;
+    fprintf(ffit, "%.15lf\t%.15lf\t%.15lf\t", sol[0], sol[1], sol[2]);
+    fprintf(ffit, "%.15lf\t%.15lf\t%.15lf\t", weight[2], weight[1], weight[0]);
+    for (int i=0; i<NCHANNELS; i++) {
+      fprintf(ffit, "%.15lf\t%.15lf\t%.15lf\t", obs.coeffs[i].cba[0], obs.coeffs[i].cba[1], obs.coeffs[i].cba[2]);
+      fprintf(ffit, "%.15lf\t", -1/obs.coeffs[i].cba[0]);
+      fprintf(ffit, "%.15lf\t", 2*obs.coeffs[i].cba[1]);
+      ObsLowEnergy err = error_procent(&obs_fit[i], &obs_AV18[i]);
+      fprintf(ffit, "%.15lf\t%.15lf\t", err.a, err.re);
+      err_proc += err.a + err.re;
+    }
+    fprintf(ffit, "%.15lf\n", err_proc);
   }
+
+  fclose(ffit);
 
   /* Free TAO data structures */
   PetscCall(TaoDestroy(&tao));
@@ -258,7 +320,6 @@ PetscErrorCode EvaluateFunction(Tao tao, Vec X, Vec F, void *ptr)
   lecs.LECS[0] = x[1];
   lecs.LECS[1] = x[2];
   Observables obs = scattering_numerov_quantum_num(energies, kcotd, ne, &qn_fit, &lecs);
-  double weight[] = { 5, 3, 0};
   
   PetscPrintf(PETSC_COMM_SELF, "\n\nR: %.15f C11: %.15f C6: %.15f\n", x[0], x[1], x[2]);
   for (int ich=0; ich < NCHANNELS; ich++) {
@@ -422,7 +483,7 @@ PetscErrorCode InitializeData(AppCtx *user)
 
   for (int ich=0; ich < NCHANNELS; ich++) {
     coeffs coeff = obs.coeffs[ich];
-    PetscPrintf(PETSC_COMM_SELF, "x[0]: %.15f x[1]: %.15f x[2]: %.15f\n", coeff.cba[0], coeff.cba[1], coeff.cba[2]);
+    PetscPrintf(PETSC_COMM_SELF, "c: %.15f b: %.15f a: %.15f\n", coeff.cba[0], coeff.cba[1], coeff.cba[2]);
     PetscPrintf(PETSC_COMM_SELF, "#Scattering length: %.15f\n", -1/coeff.cba[0]);
     PetscPrintf(PETSC_COMM_SELF, "#Effective range  : %.15f\n\n\n", 2*coeff.cba[1]);
     y[ich * 3 + 0] = coeff.cba[0];
@@ -437,10 +498,11 @@ PetscErrorCode InitializeData(AppCtx *user)
   fprintf(fp,"# --- potential data to be fitted are a, b and c ---\n");
   for (int ich=0; ich < NCHANNELS; ich++) {
     coeffs coeff = obs.coeffs[ich];
-    fprintf(fp,"# --- channel %d ---\n", ich);
+    obs_AV18[ich].a  =-1/coeff.cba[0];
+    obs_AV18[ich].re = 2*coeff.cba[1];
     fprintf(fp,"#c: %.15f\tb: %.15f\ta: %.15f\n", coeff.cba[0],coeff.cba[1],coeff.cba[2]);
-    fprintf(fp,"#Scattering length: %.15f\n", -1/coeff.cba[0]);
-    fprintf(fp,"#Effective range  : %.15f\n\n\n", 2*coeff.cba[1]);
+    fprintf(fp,"#Scattering length: %.15f\n", obs_AV18[ich].a);
+    fprintf(fp,"#Effective range  : %.15f\n\n\n", obs_AV18[ich].re);
     for (int ie=1; ie <= ne; ie++) fprintf(fp, "%.15f\t%.15f\n", k2_from_E(energies[ie-1]), kcotd[ich][ie-1]);
   }
   fclose(fp);
